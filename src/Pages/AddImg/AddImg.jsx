@@ -13,93 +13,88 @@ const AddImg = () => {
     const navigate = useNavigate();
     const {user}=useAuth();
     const [axiosSecure] = UseAxiosSecure();
-  console.log(user)
     const imageHostingUrl = `https://api.imgbb.com/1/upload?key=${
       import.meta.env.VITE_IMAGE_HOSTING_KEY
     }`;
     const onSubmit = async (data) => {
-        setIsSubmitting(true);
-        setUploadProgress(0);
-    
-        const {
-         imgages
-        } = data;
-
-    
-        const imageFiles = data.images;
-        const imageUrls = [];
-    
-        // Upload images
-        for (let i = 0; i < imageFiles.length; i++) {
+      setIsSubmitting(true);
+      setUploadProgress(0);
+  
+      const imageFiles = data.images;
+      const uploadedImages = [];
+  
+      // Upload images one by one
+      for (let i = 0; i < imageFiles.length; i++) {
           const formData = new FormData();
           formData.append("image", imageFiles[i]);
-    
+  
           const res = await fetch(imageHostingUrl, {
-            method: "POST",
-            body: formData,
+              method: "POST",
+              body: formData,
           });
-    
+  
           const imgResponse = await res.json();
           if (imgResponse.success) {
-            imageUrls.push(imgResponse.data.display_url);
+              uploadedImages.push({
+                  display_url: imgResponse.data.display_url, 
+                  delete_url: imgResponse.data.delete_url,  // ✅ Unique delete URL for each image
+              });
           } else {
-            Swal.fire({
-              icon: "error",
-              title: "Failed to upload image. Please try again.",
-              timer: 3000,
-            });
-            setIsSubmitting(false);
-            return;
+              Swal.fire({
+                  icon: "error",
+                  title: "Failed to upload image. Please try again.",
+                  timer: 3000,
+              });
+              setIsSubmitting(false);
+              return;
           }
-    
+  
           setUploadProgress(((i + 1) / imageFiles.length) * 100);
-        }  
-        const post = {         
-          images: imageUrls,
+      }
+  
+      const post = {         
+          images: uploadedImages, // ✅ Each image has its own delete URL
           postedIn: new Date(),
           authorName: user?.displayName,
-          authorEmail:user?.email
-        };
-    
-        try {
-         
-    
-          const response = await fetch(
-            "https://pixventory.vercel.app/images",
-            {
+          authorEmail: user?.email
+      };
+  
+      try {
+          const response = await fetch("https://pixventory.vercel.app/images", {
               method: "POST",
               headers: {
-                "Content-Type": "application/json"},
+                  "Content-Type": "application/json"
+              },
               body: JSON.stringify(post),
-            }
-          );
-    
+          });
+  
           if (response.ok) {
-            Swal.fire({
-              icon: "success",
-              title: "Image added successfully!",
-              showConfirmButton: false,
-              timer: 3000,
-            });
-            navigate("/");
-            reset();
+              Swal.fire({
+                  icon: "success",
+                  title: "Image added successfully!",
+                  showConfirmButton: false,
+                  timer: 3000,
+              });
+              navigate("/");
+              reset();
           } else {
-            const errorResponse = await response.json();
-            console.error("Server response:", errorResponse);
-            throw new Error("Failed to add Image. Please try again.");
+              const errorResponse = await response.json();
+              console.error("Server response:", errorResponse);
+              throw new Error("Failed to add Image. Please try again.");
           }
-        } catch (error) {
+      } catch (error) {
           console.error("Error:", error);
           Swal.fire({
-            icon: "error",
-            text: error.message,
-            timer: 3000,
+              icon: "error",
+              text: error.message,
+              timer: 3000,
           });
-        } finally {
+      } finally {
           setIsSubmitting(false);
           setUploadProgress(0);
-        }
-      };
+      }
+  };
+  
 
     return (
         <div className="flex flex-col items-center justify-center w-full min-h-screen pt-16 ">
